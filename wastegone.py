@@ -24,6 +24,48 @@ dataset_completo = pd.read_csv('dataset/dataset_completo.csv', sep=';', thousand
 
 # Visualizzazione del dataset finale
 dataset_completo
+
+# Trova i valori nulli (NaN)
+nan_mask = dataset_completo.isna()
+
+# Trova i valori uguali a "-"
+dash_mask = dataset_completo.applymap(lambda x: x == " -   " or x == " N.C. " or x == "NC")
+
+# Somma i valori nulli (NaN) e i valori uguali a "-"
+nan_count = nan_mask.sum()
+dash_count = dash_mask.sum()
+
+# Combina i risultati
+total_count = nan_count + dash_count
+
+total_count
+
+# Colonne da verificare
+columns_to_check = [
+    "Kg di rifiuti differenziati (RDi)",
+    "Kg di compostaggio domestico",
+    "Kg di rifiuti non differenziati (RUind)",
+    "Totale Kg di rifiuti prodotti (RDi+comp+RUind)",
+    "Produzione R.U. pro capite annua in Kg",
+    "%RD",
+    "Tasso di riciclaggio"
+]
+
+# Filtra le righe che contengono "N.C." in almeno una delle colonne specificate
+
+filtered_rows = dataset_completo[dataset_completo[columns_to_check].applymap(lambda x: x == " N.C. " or x =="NC" or x == " NC ").any(axis=1)]
+
+# Visualizza le righe filtrate
+filtered_rows
+
+# Elimina le righe trovate dal dataset completo
+dataset_completo = dataset_completo[~dataset_completo.index.isin(filtered_rows.index)]
+
+# Salva il dataset aggiornato
+dataset_completo.to_csv('dataset_completo_pulito.csv', index=False, sep=';')
+
+# Visualizza il dataset aggiornato
+dataset_completo
 """
 
 # Crea un nuovo notebook
