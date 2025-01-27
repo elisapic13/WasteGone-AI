@@ -62,7 +62,7 @@ filtered_rows
 dataset_completo = dataset_completo[~dataset_completo.index.isin(filtered_rows.index)]
 
 # Salva il dataset aggiornato
-dataset_completo.to_csv('dataset_completo_pulito.csv', index=False, sep=';')
+dataset_completo.to_csv('dataset/dataset_completo_pulito.csv', index=False, sep=';')
 
 # Visualizza il dataset aggiornato
 dataset_completo
@@ -98,7 +98,7 @@ dataset_completo.loc[dataset_completo['Kg di compostaggio domestico'].isna(), 'K
 dataset_completo['Kg di compostaggio domestico'] = dataset_completo['Kg di compostaggio domestico'].round(3)
 
 # Salva il dataset aggiornato
-dataset_completo.to_csv('dataset_completo_pulito.csv', index=False, sep=';')
+dataset_completo.to_csv('dataset/dataset_completo_pulito.csv', index=False, sep=';')
 
 # Visualizza il dataset aggiornato
 dataset_completo
@@ -113,7 +113,7 @@ comuni_da_tenere = comune_counts[comune_counts >= 3].index
 dataset_filtrato = dataset_completo[dataset_completo['Comune'].isin(comuni_da_tenere)]
 
 # Salva il nuovo dataset su file (opzionale)
-dataset_filtrato.to_csv('dataset_filtrato.csv', index=False, sep=';', encoding='utf-8')
+dataset_filtrato.to_csv('dataset/dataset_filtrato.csv', index=False, sep=';', encoding='utf-8')
 
 # Mostra il dataset filtrato
 dataset_filtrato
