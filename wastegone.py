@@ -68,39 +68,9 @@ dataset_completo.to_csv('dataset/dataset_completo_pulito.csv', index=False, sep=
 dataset_completo
 
 # Eliminazione delle colonne specificate
-dataset_completo = dataset_completo.drop(columns=['Provincia','%RD', 'Tasso di riciclaggio'])
+dataset_completo = dataset_completo.drop(columns=['Kg di compostaggio domestico', 'Provincia','%RD', 'Tasso di riciclaggio'])
 
 # Visualizzazione del dataset finale senza le colonne eliminate
-dataset_completo
-
-# Sostituisci i valori " -" e " N.C." con NaN
-dataset_completo.replace({" -": pd.NA, " N.C.": pd.NA, "NC": pd.NA, " NC ": pd.NA}, inplace=True)
-
-# Converte le colonne "Kg di compostaggio domestico" e "Abitanti" in numerico, forzando gli errori a diventare NaN
-dataset_completo['Kg di compostaggio domestico'] = pd.to_numeric(dataset_completo['Kg di compostaggio domestico'], errors='coerce')
-dataset_completo['Abitanti'] = pd.to_numeric(dataset_completo['Abitanti'], errors='coerce')
-
-# Assicurati che la colonna "Abitanti" non abbia valori NaN (se necessario)
-dataset_completo['Abitanti'] = dataset_completo['Abitanti'].fillna(0)  # Puoi anche usare un altro valore di default se preferisci
-
-# Filtra le righe con valori non nulli di "Kg di compostaggio domestico"
-non_nulli = dataset_completo[dataset_completo['Kg di compostaggio domestico'].notna()]
-
-# Calcola il rapporto medio Kg/abitante per le righe non nulle
-rapporto_media = (non_nulli['Kg di compostaggio domestico'] / non_nulli['Abitanti']).mean()
-
-# Popola i valori nulli di "Kg di compostaggio domestico" usando il numero di abitanti e il rapporto medio
-dataset_completo.loc[dataset_completo['Kg di compostaggio domestico'].isna(), 'Kg di compostaggio domestico'] = (
-    dataset_completo['Abitanti'] * rapporto_media
-)
-
-# Arrotonda i valori della colonna "Kg di compostaggio domestico" a 3 decimali
-dataset_completo['Kg di compostaggio domestico'] = dataset_completo['Kg di compostaggio domestico'].round(3)
-
-# Salva il dataset aggiornato
-dataset_completo.to_csv('dataset/dataset_completo_pulito.csv', index=False, sep=';')
-
-# Visualizza il dataset aggiornato
 dataset_completo
 
 # Conta le occorrenze di ciascun comune
