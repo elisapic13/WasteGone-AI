@@ -92,6 +92,54 @@ plt.show()
 # Salva il dataset con le predizioni
 df.to_csv("dataset/dataset_predizioni.csv", index=False)
 
+
+# Identificare le colonne chiave
+col_anno = 'anno'
+col_comune = 'comune'
+col_x1 = 'kg di rifiuti differenziati (rdi)'
+col_x2 = 'kg di rifiuti non differenziati (ruind)'
+col_target = 'totale kg di rifiuti prodotti (rdi+ruind)'
+
+# Funzione per convertire stringhe in numeri gestendo errori
+def convert_to_float(series):
+    return pd.to_numeric(series.astype(str)
+                         .str.replace('.', '', regex=False)
+                         .str.replace(',', '.', regex=False)
+                         .str.strip(), errors='coerce')  # Sostituisce errori con NaN
+
+# Convertiamo le colonne numeriche
+df[col_x1] = convert_to_float(df[col_x1])
+df[col_x2] = convert_to_float(df[col_x2])
+df[col_target] = convert_to_float(df[col_target])
+
+# Rimuoviamo eventuali righe con valori NaN dopo la conversione
+df.dropna(subset=[col_x1, col_x2, col_target], inplace=True)
+
+def predict_2024(group):
+    if len(group) < 2:
+        return np.nan  # Non possiamo fare una previsione con meno di 2 dati
+    
+    model = LinearRegression()
+    X = group[[col_x1, col_x2]]
+    y = group[col_target]
+    model.fit(X, y)
+    
+    X_pred = group[[col_x1, col_x2]].iloc[-1].values.reshape(1, -1)  # Usa i dati più recenti
+    return model.predict(X_pred)[0]
+
+# Applicare il modello per ogni comune
+df_pred = df.groupby(col_comune).apply(predict_2024).reset_index()
+df_pred.columns = [col_comune, 'predizione_2024']
+
+# Riporta i numeri nel formato originale con il punto come separatore delle migliaia e la virgola per i decimali
+df_pred['predizione_2024'] = df_pred['predizione_2024'].apply(lambda x: f"{x:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'))
+
+# Salvare il dataset con le predizioni
+df_pred.to_csv("dataset/predizioni_2024.csv", index=False)
+
+print(df.head())
+
+
 """
 
 # Crea un nuovo notebook
