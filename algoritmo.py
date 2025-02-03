@@ -53,6 +53,45 @@ X_scaled = scaler.fit_transform(X)
 # Suddivisione in training e test set
 X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
+# Creazione e addestramento del modello
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+# Predizioni per il test set
+y_pred_test = model.predict(X_test)
+
+# Predizioni su tutto il dataset
+df['y_pred'] = model.predict(X_scaled)
+
+# Calcolare le metriche di valutazione
+mae = mean_absolute_error(y_test, y_pred_test)
+mse = mean_squared_error(y_test, y_pred_test)
+rmse = np.sqrt(mse)
+r2 = r2_score(y_test, y_pred_test)
+
+# Stampare i risultati
+print(f"MAE: {mae}")
+print(f"MSE: {mse}")
+print(f"RMSE: {rmse}")
+print(f"R²: {r2}")
+
+# Coefficienti del modello
+coefficients = pd.DataFrame(model.coef_, X.columns, columns=['Coefficiente'])
+print(coefficients)
+
+# Grafico migliorato
+plt.figure(figsize=(8, 6))
+plt.scatter(y_test, y_pred_test, alpha=0.7, label="Valori Predetti")
+plt.plot([y.min(), y.max()], [y.min(), y.max()], 'r--', lw=2, label="Ideale")
+plt.xlabel("Valori Reali")
+plt.ylabel("Valori Predetti")
+plt.title("Regressione Lineare Multipla (Standardizzata)")
+plt.legend()
+plt.show()
+
+# Salva il dataset con le predizioni
+df.to_csv("dataset/dataset_predizioni.csv", index=False)
+
 """
 
 # Crea un nuovo notebook
