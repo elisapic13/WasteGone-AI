@@ -68,7 +68,10 @@ dataset_completo.to_csv('dataset/dataset_completo_pulito.csv', index=False, sep=
 dataset_completo
 
 # Eliminazione delle colonne specificate
-dataset_completo = dataset_completo.drop(columns=['Kg di compostaggio domestico', 'Provincia','%RD', 'Tasso di riciclaggio'])
+dataset_completo = dataset_completo.drop(columns=[ 'Produzione R.U. pro capite annua in Kg','Kg di compostaggio domestico', 'Provincia','%RD',
+                                                   'Tasso di riciclaggio'])
+
+dataset_completo.rename(columns={'Totale Kg di rifiuti prodotti (RDi+comp+RUind)': 'Totale Kg di rifiuti prodotti (RDi+RUind)'}, inplace=True)
 
 # Visualizzazione del dataset finale senza le colonne eliminate
 dataset_completo
@@ -87,6 +90,8 @@ dataset_filtrato.to_csv('dataset/dataset_filtrato.csv', index=False, sep=';', en
 
 # Mostra il dataset filtrato
 dataset_filtrato
+
+
 
 """
 
