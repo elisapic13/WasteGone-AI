@@ -83,70 +83,46 @@ r2 = r2_score(y_test, y_pred_test)
 print(f"MAE: {mae:.2f}")
 print(f"R²: {r2:.4f}")
 
-# Coefficienti del modello
-coefficients = pd.DataFrame(model.coef_, X.columns, columns=['Coefficiente'])
-print(coefficients)
-
-# Grafico migliorato
+# Grafico di regressione
 plt.figure(figsize=(8, 6))
 plt.scatter(y_test, y_pred_test, alpha=0.7, label="Valori Predetti")
 plt.plot([y.min(), y.max()], [y.min(), y.max()], 'r--', lw=2, label="Ideale")
 plt.xlabel("Valori Reali")
 plt.ylabel("Valori Predetti")
-plt.title("Regressione Lineare Multipla (Standardizzata)")
+plt.title("Regressione Lineare Multipla")
 plt.legend()
 plt.show()
 
-# Salva il dataset con le predizioni
-df.to_csv("dataset/dataset_predizioni.csv", index=False)
+# Salvare il dataset con le predizioni
+df.to_csv("dataset/dataset_senza_outlier.csv", index=False)
 
-
-# Identificare le colonne chiave
-col_anno = 'anno'
-col_comune = 'comune'
-col_x1 = 'kg di rifiuti differenziati (rdi)'
-col_x2 = 'kg di rifiuti non differenziati (ruind)'
-col_target = 'totale kg di rifiuti prodotti (rdi+ruind)'
-
-# Funzione per convertire stringhe in numeri gestendo errori
-def convert_to_float(series):
-    return pd.to_numeric(series.astype(str)
-                         .str.replace('.', '', regex=False)
-                         .str.replace(',', '.', regex=False)
-                         .str.strip(), errors='coerce')  # Sostituisce errori con NaN
-
-# Convertiamo le colonne numeriche
-df[col_x1] = convert_to_float(df[col_x1])
-df[col_x2] = convert_to_float(df[col_x2])
-df[col_target] = convert_to_float(df[col_target])
-
-# Rimuoviamo eventuali righe con valori NaN dopo la conversione
-df.dropna(subset=[col_x1, col_x2, col_target], inplace=True)
-
+# Funzione per predire i valori del 2024 per ogni comune
 def predict_2024(group):
     if len(group) < 2:
-        return np.nan  # Non possiamo fare una previsione con meno di 2 dati
+        return np.nan  
     
     model = LinearRegression()
     X = group[[col_x1, col_x2]]
     y = group[col_target]
     model.fit(X, y)
     
-    X_pred = group[[col_x1, col_x2]].iloc[-1].values.reshape(1, -1)  # Usa i dati più recenti
+    
+    X_pred = pd.DataFrame([group[[col_x1, col_x2]].iloc[-1].values], columns=[col_x1, col_x2])
+    
     return model.predict(X_pred)[0]
 
 # Applicare il modello per ogni comune
-df_pred = df.groupby(col_comune).apply(predict_2024).reset_index()
+df_pred = df.groupby(col_comune, group_keys=False)[[col_x1, col_x2, col_target]].apply(predict_2024).reset_index()
+
 df_pred.columns = [col_comune, 'predizione_2024']
 
-# Riporta i numeri nel formato originale con il punto come separatore delle migliaia e la virgola per i decimali
+# Formattare le predizioni
 df_pred['predizione_2024'] = df_pred['predizione_2024'].apply(lambda x: f"{x:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'))
 
-# Salvare il dataset con le predizioni
+# Salvare il dataset con le predizioni 2024
 df_pred.to_csv("dataset/predizioni_2024.csv", index=False)
 
 print(df.head())
-
 
 """
 
