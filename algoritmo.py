@@ -33,6 +33,34 @@ col_x1 = "kg di rifiuti differenziati (rdi)"
 col_x2 = "kg di rifiuti non differenziati (ruind)"
 col_target = "totale kg di rifiuti prodotti (rdi+ruind)"
 
+#Funzione per calcolare i limiti degli outlier
+def get_outlier_bounds(series, multiplier=1.3):
+    Q1 = series.quantile(0.25)
+    Q3 = series.quantile(0.75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - multiplier * IQR
+    upper_bound = Q3 + multiplier * IQR
+    return lower_bound, upper_bound
+
+#Calcolare i limiti per ogni colonna e filtrare il dataset
+bounds = {col: get_outlier_bounds(df[col]) for col in [col_x1, col_x2, col_target]}
+df_cleaned = df[
+    (df[col_x1].between(bounds[col_x1])) &
+    (df[col_x2].between(bounds[col_x2])) &
+    (df[col_target].between(*bounds[col_target]))
+]
+
+#Verifica dei dati puliti
+print(f"Numero di righe prima della rimozione: {len(df)}")
+print(f"Numero di righe dopo la rimozione: {len(df_cleaned)}")
+
+#Aggiorna il dataframe con i dati puliti
+df = df_cleaned
+
+#Definire le variabili indipendenti e dipendenti
+X = df[[col_x1, col_x2]]
+y = df[col_target]
+
 # Standardizzazione delle feature (Z-score)
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
@@ -44,23 +72,16 @@ X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, 
 model = LinearRegression()
 model.fit(X_train, y_train)
 
-# Predizioni per il test set
+#Predizioni
+df['y_pred'] = model.predict(X_scaled)
 y_pred_test = model.predict(X_test)
 
-# Predizioni su tutto il dataset
-df['y_pred'] = model.predict(X_scaled)
-
-# Calcolare le metriche di valutazione
+#Metriche di valutazione
 mae = mean_absolute_error(y_test, y_pred_test)
-mse = mean_squared_error(y_test, y_pred_test)
-rmse = np.sqrt(mse)
 r2 = r2_score(y_test, y_pred_test)
 
-# Stampare i risultati
-print(f"MAE: {mae}")
-print(f"MSE: {mse}")
-print(f"RMSE: {rmse}")
-print(f"R²: {r2}")
+print(f"MAE: {mae:.2f}")
+print(f"R²: {r2:.4f}")
 
 # Coefficienti del modello
 coefficients = pd.DataFrame(model.coef_, X.columns, columns=['Coefficiente'])
