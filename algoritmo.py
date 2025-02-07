@@ -10,41 +10,28 @@ from sklearn.linear_model import LinearRegression
 # Caricare il dataset con rilevamento automatico del separatore
 df = pd.read_csv("dataset/dataset_filtrato.csv", sep=None, engine='python')
 
-# Stampiamo i nomi delle colonne per verificare che siano corretti
-print("Nomi colonne nel dataset:", df.columns.tolist())
-
 # Rimuoviamo spazi extra e standardizziamo i nomi delle colonne
 df.columns = df.columns.str.strip().str.lower()
 
-# Stampiamo i nuovi nomi delle colonne
-print("Nomi colonne puliti:", df.columns.tolist())
-
 # Selezioniamo le colonne numeriche corrette
 cols_to_convert = [
-    'kg di rifiuti differenziati (rdi)',
-    'kg di rifiuti non differenziati (ruind)',
-    'totale kg di rifiuti prodotti (rdi+ruind)'
+    "anno",
+    "kg di rifiuti differenziati (rdi)",
+    "kg di rifiuti non differenziati (ruind)",
+    "totale kg di rifiuti prodotti (rdi+ruind)"
 ]
 
-# Normalizziamo i nomi delle colonne per sicurezza
-cols_to_convert = [col.strip().lower() for col in cols_to_convert]
-
-# Pulizia dei dati (rimozione caratteri non numerici e conversione)
+#Conversione delle colonne numeriche eliminando separatori di migliaia e convertendo in float
 for col in cols_to_convert:
-    df[col] = df[col].astype(str).str.replace(r'[^\d.,]', '', regex=True).str.replace(',', '.')
+    df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+    df[col] = pd.to_numeric(df[col], errors='coerce')
 
-# Conversione in numerico
-df[cols_to_convert] = df[cols_to_convert].apply(pd.to_numeric, errors='coerce')
-
-# Rimuoviamo righe con valori NaN dopo la conversione
-df = df.dropna()
-
-# Controlliamo se ci sono outlier evidenti
-print("Valori massimi:\n", df[cols_to_convert].max())
-
-# Definiamo le variabili indipendenti (X) e la variabile dipendente (y)
-X = df[['kg di rifiuti differenziati (rdi)', 'kg di rifiuti non differenziati (ruind)']]
-y = df['totale kg di rifiuti prodotti (rdi+ruind)']
+#Identificare le colonne chiave
+col_anno = "anno"
+col_comune = "comune"
+col_x1 = "kg di rifiuti differenziati (rdi)"
+col_x2 = "kg di rifiuti non differenziati (ruind)"
+col_target = "totale kg di rifiuti prodotti (rdi+ruind)"
 
 # Standardizzazione delle feature (Z-score)
 scaler = StandardScaler()
