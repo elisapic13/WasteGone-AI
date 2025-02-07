@@ -45,10 +45,11 @@ def get_outlier_bounds(series, multiplier=1.3):
 #Calcolare i limiti per ogni colonna e filtrare il dataset
 bounds = {col: get_outlier_bounds(df[col]) for col in [col_x1, col_x2, col_target]}
 df_cleaned = df[
-    (df[col_x1].between(bounds[col_x1])) &
-    (df[col_x2].between(bounds[col_x2])) &
-    (df[col_target].between(*bounds[col_target]))
+    (df[col_x1].between(bounds[col_x1][0], bounds[col_x1][1])) &
+    (df[col_x2].between(bounds[col_x2][0], bounds[col_x2][1])) &
+    (df[col_target].between(bounds[col_target][0], bounds[col_target][1]))
 ]
+
 
 #Verifica dei dati puliti
 print(f"Numero di righe prima della rimozione: {len(df)}")
