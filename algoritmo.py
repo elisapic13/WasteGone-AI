@@ -6,6 +6,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, r2_score
 
 # Caricare il dataset con rilevamento automatico del separatore
 df = pd.read_csv("dataset/dataset_filtrato.csv", sep=None, engine='python')
@@ -21,19 +24,19 @@ cols_to_convert = [
     "totale kg di rifiuti prodotti (rdi+ruind)"
 ]
 
-#Conversione delle colonne numeriche eliminando separatori di migliaia e convertendo in float
+# Conversione delle colonne numeriche eliminando separatori di migliaia e convertendo in float
 for col in cols_to_convert:
     df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
     df[col] = pd.to_numeric(df[col], errors='coerce')
 
-#Identificare le colonne chiave
+# Identificare le colonne chiave
 col_anno = "anno"
 col_comune = "comune"
 col_x1 = "kg di rifiuti differenziati (rdi)"
 col_x2 = "kg di rifiuti non differenziati (ruind)"
 col_target = "totale kg di rifiuti prodotti (rdi+ruind)"
 
-#Funzione per calcolare i limiti degli outlier
+# Funzione per calcolare i limiti degli outlier
 def get_outlier_bounds(series, multiplier=1.3):
     Q1 = series.quantile(0.25)
     Q3 = series.quantile(0.75)
@@ -42,7 +45,7 @@ def get_outlier_bounds(series, multiplier=1.3):
     upper_bound = Q3 + multiplier * IQR
     return lower_bound, upper_bound
 
-#Calcolare i limiti per ogni colonna e filtrare il dataset
+# Calcolare i limiti per ogni colonna e filtrare il dataset
 bounds = {col: get_outlier_bounds(df[col]) for col in [col_x1, col_x2, col_target]}
 df_cleaned = df[
     (df[col_x1].between(bounds[col_x1][0], bounds[col_x1][1])) &
@@ -50,16 +53,15 @@ df_cleaned = df[
     (df[col_target].between(bounds[col_target][0], bounds[col_target][1]))
 ]
 
-
-#Verifica dei dati puliti
+# Verifica dei dati puliti
 print(f"Numero di righe prima della rimozione: {len(df)}")
 print(f"Numero di righe dopo la rimozione: {len(df_cleaned)}")
 
-#Aggiorna il dataframe con i dati puliti
+# Aggiorna il dataframe con i dati puliti
 df = df_cleaned
 
-#Definire le variabili indipendenti e dipendenti
-X = df[[col_x1, col_x2]]
+# Definire le variabili indipendenti e dipendenti
+X = df[[col_anno, col_x1, col_x2]]  
 y = df[col_target]
 
 # Standardizzazione delle feature (Z-score)
@@ -73,11 +75,11 @@ X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, 
 model = LinearRegression()
 model.fit(X_train, y_train)
 
-#Predizioni
+# Predizioni
 df['y_pred'] = model.predict(X_scaled)
 y_pred_test = model.predict(X_test)
 
-#Metriche di valutazione
+# Metriche di valutazione
 mae = mean_absolute_error(y_test, y_pred_test)
 r2 = r2_score(y_test, y_pred_test)
 
@@ -103,17 +105,21 @@ def predict_2024(group):
         return np.nan  
     
     model = LinearRegression()
-    X = group[[col_x1, col_x2]]
+    X = group[[col_anno, col_x1, col_x2]]  
     y = group[col_target]
     model.fit(X, y)
     
-    
-    X_pred = pd.DataFrame([group[[col_x1, col_x2]].iloc[-1].values], columns=[col_x1, col_x2])
+    # Creare un input con l'anno 2024 per fare la previsione
+    X_pred = pd.DataFrame({
+        col_anno: [2024],  
+        col_x1: [group[col_x1].mean()],  # Media dei rifiuti differenziati fino al 2023
+        col_x2: [group[col_x2].mean()]   # Media dei rifiuti non differenziati fino al 2023
+    })
     
     return model.predict(X_pred)[0]
 
 # Applicare il modello per ogni comune
-df_pred = df.groupby(col_comune, group_keys=False)[[col_x1, col_x2, col_target]].apply(predict_2024).reset_index()
+df_pred = df.groupby(col_comune, group_keys=False)[[col_anno, col_x1, col_x2, col_target]].apply(predict_2024).reset_index()
 
 df_pred.columns = [col_comune, 'predizione_2024']
 
@@ -124,6 +130,7 @@ df_pred['predizione_2024'] = df_pred['predizione_2024'].apply(lambda x: f"{x:,.2
 df_pred.to_csv("dataset/predizioni_2024.csv", index=False)
 
 print(df.head())
+
 
 """
 
