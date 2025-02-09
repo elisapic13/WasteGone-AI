@@ -6,8 +6,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, r2_score
 
 # Caricare il dataset con rilevamento automatico del separatore
@@ -60,36 +58,46 @@ print(f"Numero di righe dopo la rimozione: {len(df_cleaned)}")
 # Aggiorna il dataframe con i dati puliti
 df = df_cleaned
 
-# Definire le variabili indipendenti e dipendenti
-X = df[[col_anno, col_x1, col_x2]]  
-y = df[col_target]
+# Dividi il dataset in base all'anno
+train_set = df[df["anno"].isin([2021, 2022])].copy()  # Aggiungi .copy()
+test_set = df[df["anno"] == 2023].copy()  # Aggiungi .copy()
 
-# Standardizzazione delle feature (Z-score)
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+# Separa features (X) e target (y) per train e test
+X_train = train_set.select_dtypes(include=[np.number]).drop(columns=[col_target], errors="ignore")
+y_train = train_set[col_target]
 
-# Suddivisione in training e test set
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+X_test = test_set.select_dtypes(include=[np.number]).drop(columns=[col_target], errors="ignore")
+y_test = test_set[col_target]
+
+print(f"Training set: {X_train.shape}, Test set: {X_test.shape}")
 
 # Creazione e addestramento del modello
 model = LinearRegression()
 model.fit(X_train, y_train)
 
-# Predizioni
-df['y_pred'] = model.predict(X_scaled)
+# Predizioni sul set di addestramento (X_train)
+y_pred_train = model.predict(X_train)
+
+# Predizioni sul set di test (X_test)
 y_pred_test = model.predict(X_test)
+
+# Aggiungi solo le predizioni per il training set al DataFrame originario usando .loc
+train_set.loc[:, 'y_pred'] = y_pred_train
+
+# Aggiungi le predizioni per il test set usando .loc
+test_set.loc[:, 'y_pred'] = y_pred_test
 
 # Metriche di valutazione
 mae = mean_absolute_error(y_test, y_pred_test)
 r2 = r2_score(y_test, y_pred_test)
 
-print(f"MAE: {mae:.2f}")
-print(f"R²: {r2:.4f}")
+print(f"MAE: {mae}")
+print(f"R²: {r2}")
 
 # Grafico di regressione
 plt.figure(figsize=(8, 6))
 plt.scatter(y_test, y_pred_test, alpha=0.7, label="Valori Predetti")
-plt.plot([y.min(), y.max()], [y.min(), y.max()], 'r--', lw=2, label="Ideale")
+plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2, label="Ideale")
 plt.xlabel("Valori Reali")
 plt.ylabel("Valori Predetti")
 plt.title("Regressione Lineare Multipla")
@@ -97,7 +105,8 @@ plt.legend()
 plt.show()
 
 # Salvare il dataset con le predizioni
-df.to_csv("dataset/dataset_senza_outlier.csv", index=False)
+df_cleaned_with_preds = pd.concat([train_set, test_set], axis=0)
+df_cleaned_with_preds.to_csv("dataset/dataset_senza_outlier.csv", index=False)
 
 # Funzione per predire i valori del 2024 per ogni comune
 def predict_2024(group):
@@ -120,7 +129,6 @@ def predict_2024(group):
 
 # Applicare il modello per ogni comune
 df_pred = df.groupby(col_comune, group_keys=False)[[col_anno, col_x1, col_x2, col_target]].apply(predict_2024).reset_index()
-
 df_pred.columns = [col_comune, 'predizione_2024']
 
 # Formattare le predizioni
@@ -130,6 +138,7 @@ df_pred['predizione_2024'] = df_pred['predizione_2024'].apply(lambda x: f"{x:,.2
 df_pred.to_csv("dataset/predizioni_2024.csv", index=False)
 
 print(df.head())
+
 
 
 """
