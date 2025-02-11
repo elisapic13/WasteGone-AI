@@ -57,6 +57,69 @@ X_test = test_df[features]
 y_test_diff = test_df[target_diff]
 y_test_non_diff = test_df[target_non_diff]
 
+# Rimuoviamo le righe con NaN nei target e nelle predizioni
+train_df_clean = train_df.dropna(subset=[target_diff, target_non_diff])
+test_df_clean = test_df.dropna(subset=[target_diff, target_non_diff])
+
+# Rimuoviamo gli outlier per i target
+train_df_clean = remove_outliers(train_df_clean, target_diff)
+train_df_clean = remove_outliers(train_df_clean, target_non_diff)
+test_df_clean = remove_outliers(test_df_clean, target_diff)
+test_df_clean = remove_outliers(test_df_clean, target_non_diff)
+
+# Creiamo i set puliti di training e test dopo aver rimosso gli outlier
+X_train_clean = train_df_clean[features]
+y_train_diff_clean = train_df_clean[target_diff]
+y_train_non_diff_clean = train_df_clean[target_non_diff]
+
+X_test_clean = test_df_clean[features]
+y_test_diff_clean = test_df_clean[target_diff]
+y_test_non_diff_clean = test_df_clean[target_non_diff]
+
+# Crea e allena il modello Random Forest per i rifiuti differenziati
+model_diff = RandomForestRegressor(n_estimators=100, random_state=42)
+model_diff.fit(X_train_clean, y_train_diff_clean)
+
+# Predizioni sul test set per i rifiuti differenziati (per il 2023)
+y_pred_diff_clean = model_diff.predict(X_test_clean)
+
+# Crea e allena il modello Random Forest per i rifiuti non differenziati
+model_non_diff = RandomForestRegressor(n_estimators=100, random_state=42)
+model_non_diff.fit(X_train_clean, y_train_non_diff_clean)
+
+# Predizioni sul test set per i rifiuti non differenziati (per il 2023)
+y_pred_non_diff_clean = model_non_diff.predict(X_test_clean)
+
+# Creiamo una copia di test_df_clean per evitare il SettingWithCopyWarning
+test_df_clean = test_df_clean.copy()
+
+# Aggiungiamo le predizioni al DataFrame di test pulito per il 2023
+test_df_clean['Predizione Rifiuti Differenziati'] = y_pred_diff_clean
+test_df_clean['Predizione Rifiuti Non Differenziati'] = y_pred_non_diff_clean
+
+# Calcoliamo l'errore quadratico medio per i rifiuti differenziati
+mse_diff_clean = mean_squared_error(y_test_diff_clean, y_pred_diff_clean)
+print(f'MSE per i rifiuti differenziati per il 2023: {mse_diff_clean}')
+
+# Calcoliamo l'errore quadratico medio per i rifiuti non differenziati
+mse_non_diff_clean = mean_squared_error(y_test_non_diff_clean, y_pred_non_diff_clean)
+print(f'MSE per i rifiuti non differenziati per il 2023: {mse_non_diff_clean}')
+
+# Calcoliamo il MAE per i rifiuti differenziati
+mae_diff_clean = mean_absolute_error(y_test_diff_clean, y_pred_diff_clean)
+print(f'MAE per i rifiuti differenziati per il 2023: {mae_diff_clean}')
+
+# Calcoliamo il MAE per i rifiuti non differenziati
+mae_non_diff_clean = mean_absolute_error(y_test_non_diff_clean, y_pred_non_diff_clean)
+print(f'MAE per i rifiuti non differenziati per il 2023: {mae_non_diff_clean}')
+
+# Calcoliamo il R^2 per i rifiuti differenziati
+r2_diff_clean = r2_score(y_test_diff_clean, y_pred_diff_clean)
+print(f'R^2 per i rifiuti differenziati per il 2023: {r2_diff_clean}')
+
+# Calcoliamo il R^2 per i rifiuti non differenziati
+r2_non_diff_clean = r2_score(y_test_non_diff_clean, y_pred_non_diff_clean)
+print(f'R^2 per i rifiuti non differenziati per il 2023: {r2_non_diff_clean}')
 
 """
 
