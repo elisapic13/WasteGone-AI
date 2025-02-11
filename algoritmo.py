@@ -2,143 +2,60 @@ import nbformat as nbf
 
 # Codice da includere nel notebook
 code = r"""import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error, r2_score
 
-# Caricare il dataset con rilevamento automatico del separatore
-df = pd.read_csv("dataset/dataset_filtrato.csv", sep=None, engine='python')
+# Carica il dataset specificando il separatore come punto e virgola
+df = pd.read_csv('dataset/dataset_filtrato.csv', delimiter=';')
 
-# Rimuoviamo spazi extra e standardizziamo i nomi delle colonne
-df.columns = df.columns.str.strip().str.lower()
+# Funzione per pulire le colonne con percentuali
+def clean_percentage_column(col):
+    return col.str.replace('%', '').str.replace(',', '.').astype(float)
 
-# Selezioniamo le colonne numeriche corrette
-cols_to_convert = [
-    "anno",
-    "kg di rifiuti differenziati (rdi)",
-    "kg di rifiuti non differenziati (ruind)",
-    "totale kg di rifiuti prodotti (rdi+ruind)"
-]
+# Funzione per pulire i numeri da separatori di migliaia e spazi
+def clean_numeric_column(col):
+    col = col.replace('-', np.nan)
+    col = col.str.replace(' ', '').str.replace('.', '')
+    return pd.to_numeric(col, errors='coerce')
 
-# Conversione delle colonne numeriche eliminando separatori di migliaia e convertendo in float
-for col in cols_to_convert:
-    df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
-    df[col] = pd.to_numeric(df[col], errors='coerce')
-
-# Identificare le colonne chiave
-col_anno = "anno"
-col_comune = "comune"
-col_x1 = "kg di rifiuti differenziati (rdi)"
-col_x2 = "kg di rifiuti non differenziati (ruind)"
-col_target = "totale kg di rifiuti prodotti (rdi+ruind)"
-
-# Funzione per calcolare i limiti degli outlier
-def get_outlier_bounds(series, multiplier=1.3):
-    Q1 = series.quantile(0.25)
-    Q3 = series.quantile(0.75)
+# Funzione per rimuovere gli outlier utilizzando l'IQR
+def remove_outliers(df, column):
+    Q1 = df[column].quantile(0.25)
+    Q3 = df[column].quantile(0.75)
     IQR = Q3 - Q1
-    lower_bound = Q1 - multiplier * IQR
-    upper_bound = Q3 + multiplier * IQR
-    return lower_bound, upper_bound
+    lower_bound = Q1 - 1.3 * IQR
+    upper_bound = Q3 + 1.3 * IQR
+    return df[(df[column] >= lower_bound) & (df[column] <= upper_bound)]
 
-# Calcolare i limiti per ogni colonna e filtrare il dataset
-bounds = {col: get_outlier_bounds(df[col]) for col in [col_x1, col_x2, col_target]}
-df_cleaned = df[
-    (df[col_x1].between(bounds[col_x1][0], bounds[col_x1][1])) &
-    (df[col_x2].between(bounds[col_x2][0], bounds[col_x2][1])) &
-    (df[col_target].between(bounds[col_target][0], bounds[col_target][1]))
-]
+# Puliamo le colonne che contengono percentuali
+df['%RD'] = clean_percentage_column(df['%RD'])
+df['Tasso di riciclaggio'] = clean_percentage_column(df['Tasso di riciclaggio'])
 
-# Verifica dei dati puliti
-print(f"Numero di righe prima della rimozione: {len(df)}")
-print(f"Numero di righe dopo la rimozione: {len(df_cleaned)}")
+# Puliamo le colonne target che contengono numeri con separatori di migliaia
+df['Kg di rifiuti differenziati (RDi)'] = clean_numeric_column(df['Kg di rifiuti differenziati (RDi)'])
+df['Kg di rifiuti non differenziati (RUind)'] = clean_numeric_column(df['Kg di rifiuti non differenziati (RUind)'])
 
-# Aggiorna il dataframe con i dati puliti
-df = df_cleaned
+# Separiamo il training set (2021-2022) e il test set (2023)
+train_df = df[df['Anno'].isin([2021, 2022])]  # Usa solo i dati del 2021 e 2022 per l'allenamento
+test_df = df[df['Anno'] == 2023]  # I dati del 2023 sono utilizzati per la valutazione
 
-# Dividi il dataset in base all'anno
-train_set = df[df["anno"].isin([2021, 2022])].copy()  # Aggiungi .copy()
-test_set = df[df["anno"] == 2023].copy()  # Aggiungi .copy()
+# Variabili indipendenti (features)
+features = ['Anno', 'Abitanti', '%RD', 'Tasso di riciclaggio', 'Produzione R.U. pro capite annua in Kg']
 
-# Separa features (X) e target (y) per train e test
-X_train = train_set.select_dtypes(include=[np.number]).drop(columns=[col_target], errors="ignore")
-y_train = train_set[col_target]
+# Variabili target
+target_diff = 'Kg di rifiuti differenziati (RDi)'
+target_non_diff = 'Kg di rifiuti non differenziati (RUind)'
 
-X_test = test_set.select_dtypes(include=[np.number]).drop(columns=[col_target], errors="ignore")
-y_test = test_set[col_target]
+# Creiamo i set di training e test
+X_train = train_df[features]
+y_train_diff = train_df[target_diff]
+y_train_non_diff = train_df[target_non_diff]
 
-print(f"Training set: {X_train.shape}, Test set: {X_test.shape}")
-
-# Creazione e addestramento del modello
-model = LinearRegression()
-model.fit(X_train, y_train)
-
-# Predizioni sul set di addestramento (X_train)
-y_pred_train = model.predict(X_train)
-
-# Predizioni sul set di test (X_test)
-y_pred_test = model.predict(X_test)
-
-# Aggiungi solo le predizioni per il training set al DataFrame originario usando .loc
-train_set.loc[:, 'y_pred'] = y_pred_train
-
-# Aggiungi le predizioni per il test set usando .loc
-test_set.loc[:, 'y_pred'] = y_pred_test
-
-# Metriche di valutazione
-mae = mean_absolute_error(y_test, y_pred_test)
-r2 = r2_score(y_test, y_pred_test)
-
-print(f"MAE: {mae}")
-print(f"R²: {r2}")
-
-# Grafico di regressione
-plt.figure(figsize=(8, 6))
-plt.scatter(y_test, y_pred_test, alpha=0.7, label="Valori Predetti")
-plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2, label="Ideale")
-plt.xlabel("Valori Reali")
-plt.ylabel("Valori Predetti")
-plt.title("Regressione Lineare Multipla")
-plt.legend()
-plt.show()
-
-# Salvare il dataset con le predizioni
-df_cleaned_with_preds = pd.concat([train_set, test_set], axis=0)
-df_cleaned_with_preds.to_csv("dataset/dataset_senza_outlier.csv", index=False)
-
-# Funzione per predire i valori del 2024 per ogni comune
-def predict_2024(group):
-    if len(group) < 2:
-        return np.nan  
-    
-    model = LinearRegression()
-    X = group[[col_anno, col_x1, col_x2]]  
-    y = group[col_target]
-    model.fit(X, y)
-    
-    # Creare un input con l'anno 2024 per fare la previsione
-    X_pred = pd.DataFrame({
-        col_anno: [2024],  
-        col_x1: [group[col_x1].mean()],  # Media dei rifiuti differenziati fino al 2023
-        col_x2: [group[col_x2].mean()]   # Media dei rifiuti non differenziati fino al 2023
-    })
-    
-    return model.predict(X_pred)[0]
-
-# Applicare il modello per ogni comune
-df_pred = df.groupby(col_comune, group_keys=False)[[col_anno, col_x1, col_x2, col_target]].apply(predict_2024).reset_index()
-df_pred.columns = [col_comune, 'predizione_2024']
-
-# Formattare le predizioni
-df_pred['predizione_2024'] = df_pred['predizione_2024'].apply(lambda x: f"{x:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'))
-
-# Salvare il dataset con le predizioni 2024
-df_pred.to_csv("dataset/predizioni_2024.csv", index=False)
-
-print(df.head())
-
+X_test = test_df[features]
+y_test_diff = test_df[target_diff]
+y_test_non_diff = test_df[target_non_diff]
 
 
 """
