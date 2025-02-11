@@ -121,6 +121,58 @@ print(f'R^2 per i rifiuti differenziati per il 2023: {r2_diff_clean}')
 r2_non_diff_clean = r2_score(y_test_non_diff_clean, y_pred_non_diff_clean)
 print(f'R^2 per i rifiuti non differenziati per il 2023: {r2_non_diff_clean}')
 
+# Ora possiamo predire i valori per il 2024 utilizzando il modello allenato sui dati 2021-2022
+
+# Crea un DataFrame per i dati del 2024 con le stesse caratteristiche
+df_2024 = pd.DataFrame({
+    'Anno': [2024] * len(test_df),  # L'anno per cui vogliamo fare le previsioni
+    'Abitanti': test_df['Abitanti'],  # Utilizzando gli stessi abitanti del 2023 (esempio)
+    '%RD': test_df['%RD'],
+    'Tasso di riciclaggio': test_df['Tasso di riciclaggio'],
+    'Produzione R.U. pro capite annua in Kg': test_df['Produzione R.U. pro capite annua in Kg'],
+})
+
+# Predizione per i rifiuti differenziati per il 2024
+pred_diff_2024 = model_diff.predict(df_2024)
+
+# Predizione per i rifiuti non differenziati per il 2024
+pred_non_diff_2024 = model_non_diff.predict(df_2024)
+
+# Aggiungiamo la colonna 'Comune' dal test_df al DataFrame df_2024
+df_2024['Comune'] = test_df['Comune']
+
+# Aggiungiamo le predizioni per il 2024
+df_2024['Predizione Rifiuti Differenziati'] = pred_diff_2024
+df_2024['Predizione Rifiuti Non Differenziati'] = pred_non_diff_2024
+
+# Aggiungi la colonna "totale kg rifiuti prodotti" come somma delle due colonne
+df_2024['Totale kg rifiuti prodotti'] = df_2024['Predizione Rifiuti Differenziati'] + df_2024['Predizione Rifiuti Non Differenziati']
+
+# Salviamo il risultato in un file CSV
+df_2024.to_csv('dataset/predizioni_rifiuti_2024.csv', index=False)
+
+print("Predizioni per i rifiuti nel 2024 salvate nel file 'predizioni_rifiuti_2024.csv'")
+
+# Grafico di regressione per i rifiuti differenziati
+plt.figure(figsize=(10, 5))
+plt.subplot(1, 2, 1)
+plt.scatter(y_test_diff_clean, y_pred_diff_clean, color='blue')
+plt.plot([y_test_diff_clean.min(), y_test_diff_clean.max()], [y_test_diff_clean.min(), y_test_diff_clean.max()], color='red', lw=2)
+plt.title('Rifiuti Differenziati - Predizione vs Realità')
+plt.xlabel('Valori reali')
+plt.ylabel('Valori predetti')
+
+# Grafico di regressione per i rifiuti non differenziati
+plt.subplot(1, 2, 2)
+plt.scatter(y_test_non_diff_clean, y_pred_non_diff_clean, color='green')
+plt.plot([y_test_non_diff_clean.min(), y_test_non_diff_clean.max()], [y_test_non_diff_clean.min(), y_test_non_diff_clean.max()], color='red', lw=2)
+plt.title('Rifiuti Non Differenziati - Predizione vs Realità')
+plt.xlabel('Valori reali')
+plt.ylabel('Valori predetti')
+
+plt.tight_layout()
+plt.show()
+
 """
 
 # Crea un nuovo notebook
